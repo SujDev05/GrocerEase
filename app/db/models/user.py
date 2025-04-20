@@ -14,4 +14,4 @@ class User(Base):
 
     # Relationships
     pantry = relationship("Pantry", back_populates="user", cascade="all, delete-orphan", uselist=False)
-    shopping_list = relationship("ShoppingList", back_populates="user", cascade="all, delete-orphan", uselist=False)
+    shopping_lists = relationship("ShoppingList", back_populates="user", cascade="all, delete-orphan", uselist=False)

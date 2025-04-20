@@ -1,18 +1,27 @@
 from pydantic import BaseModel
-from typing import Dict, Any
+from typing import List, Optional
 
-class ShoppingListBase(BaseModel):
-    items: Dict[str, Any]  # ✅ Store shopping list items as JSON
+class ShoppingListItem(BaseModel):
+    item_name: str
+    quantity: float
+    unit: str
+    purchased: bool = False
 
-class ShoppingListCreate(ShoppingListBase):
+class ShoppingListCreate(BaseModel):
+    user_id: int
+    item_name: str
+    quantity: float
+    unit: str
+    purchased: Optional[bool] = None
+    items: List[ShoppingListItem]
+
+class ShoppingListUpdate(ShoppingListCreate):
     pass
 
-class ShoppingListUpdate(ShoppingListBase):
-    pass
-
-class ShoppingListResponse(ShoppingListBase):
+class ShoppingListResponse(ShoppingListCreate):
     id: int
     user_id: int
 
     class Config:
         from_attributes = True
+        orm_mode = True

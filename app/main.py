@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.endpoints import users, pantry, shopping_list
 from app.db.session import engine
 from app.db.base import Base
+from app.db.models import User, Pantry, ShoppingList
 
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse

@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import Dict, Any
 
 class PantryBase(BaseModel):
-    items: Dict[str, Any]  # ✅ Store pantry items as JSON
+    items: Dict[str, Any]  
 
 class PantryCreate(PantryBase):
     pass
