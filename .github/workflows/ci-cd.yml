@@ -12,6 +12,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    services:
+      db:
+        image: postgres:13
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: grocerease
+        ports:
+          - 5432:5432
+
     steps:
       # Checkout the code
       - name: Checkout code
@@ -26,16 +36,10 @@ jobs:
         run: |
           docker build -t my-docker-image:latest .
 
-      # Stop and remove the existing container (if it exists)
-      - name: Stop and remove existing container
+      # Run the Docker container
+      - name: Run the container
         run: |
-          docker stop grocerease || true
-          docker rm grocerease || true
-
-      # Run the Docker container locally (for testing)
-      - name: Run Docker container
-        run: |
-          docker run -d --name grocerease -p 80:80 my-docker-image:latest
+          docker run -d --name grocerease --network host -e DATABASE_URL=postgresql://user:password@localhost:5432/mydatabase my-docker-image:latest
 
       # Run tests inside the container
       - name: Run tests
