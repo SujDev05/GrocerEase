@@ -50,4 +50,4 @@ jobs:
       # Run tests inside the container
       - name: Run tests
         run: |
-          docker exec grocerease pytest /app/tests
+          docker exec grocerease /usr/local/bin/pytest /app/tests
