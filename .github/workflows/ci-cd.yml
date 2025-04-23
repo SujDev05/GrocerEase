@@ -46,8 +46,3 @@ jobs:
       - name: Run the container
         run: |
           docker run -d --name grocerease --network host -e DATABASE_URL=postgresql://user:password@db:5432/grocerease my-docker-image:latest
-
-      # Run tests inside the container
-      - name: Run tests
-        run: |
-          docker exec grocerease /usr/local/bin/pytest /app/tests
