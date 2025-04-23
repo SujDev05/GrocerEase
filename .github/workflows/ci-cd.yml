@@ -1,0 +1,48 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - backend
+  pull_request:
+    branches:
+      - backend
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgres:13
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: grocerease
+        ports:
+          - 5432:5432
+
+    steps:
+      # Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Docker
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2
+
+      # Build the Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t my-docker-image:latest .
+
+      # Stop and remove the existing container (if it exists)
+      - name: Stop and remove existing container
+        run: |
+          docker stop grocerease || true
+          docker rm grocerease || true
+
+      # Run the Docker container
+      - name: Run the container
+        run: |
+          docker run -d --name grocerease --network host -e DATABASE_URL=postgresql://user:password@db:5432/grocerease my-docker-image:latest

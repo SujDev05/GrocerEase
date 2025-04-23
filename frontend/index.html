@@ -1,0 +1,339 @@
+<script>
+    const API_BASE_URL = 'http://web:8000/api/v1'; // Use backend service name in Docker
+    let pantryItems = [];
+    let shoppingItems = [];
+
+    // Helper Functions
+    function showError(elementId, message) {
+        const errorElement = document.getElementById(elementId);
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+    }
+
+    function clearError(elementId) {
+        const errorElement = document.getElementById(elementId);
+        errorElement.textContent = '';
+        errorElement.style.display = 'none';
+    }
+
+    // Sidebar Toggle
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('hidden');
+    }
+
+    // User Profile Functions
+    async function updateProfile(userId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/${userId}`);
+            if (!response.ok) throw new Error('User not found');
+            const data = await response.json();
+            document.getElementById('user-id').textContent = data.id;
+            document.getElementById('user-name').textContent = data.name;
+            document.getElementById('user-email').textContent = data.email;
+            document.getElementById('profile-name').textContent = data.name;
+            document.getElementById('profile-img').src = `https://via.placeholder.com/40?text=${data.name[0]}`;
+        } catch (error) {
+            console.error('Failed to fetch user:', error);
+        }
+    }
+
+    // More Options Functions
+    function exportData() {
+        const data = {
+            pantry: pantryItems,
+            shopping: shoppingItems
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'grocer_ease_data.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function importData() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async (event) => {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.pantry && data.shopping) {
+                        const userId = document.getElementById('pantry-user-id').value || document.getElementById('shopping-user-id').value;
+                        if (userId) {
+                            await fetch(`${API_BASE_URL}/pantry/?user_id=${userId}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ items: data.pantry })
+                            });
+                            await fetch(`${API_BASE_URL}/shopping-list/?user_id=${userId}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ items: data.shopping })
+                            });
+                            getPantry();
+                            getShoppingList();
+                        } else {
+                            alert('Please enter a User ID first');
+                        }
+                    }
+                } catch (error) {
+                    alert('Failed to import data: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    }
+
+    async function clearAll() {
+        const userId = document.getElementById('pantry-user-id').value || document.getElementById('shopping-user-id').value;
+        if (!userId) {
+            alert('Please enter a User ID first');
+            return;
+        }
+        if (confirm('Are you sure you want to clear all pantry and shopping list data?')) {
+            try {
+                await fetch(`${API_BASE_URL}/pantry/?user_id=${userId}`, { method: 'DELETE' });
+                await fetch(`${API_BASE_URL}/shopping-list/?user_id=${userId}`, { method: 'DELETE' });
+                pantryItems = [];
+                shoppingItems = [];
+                renderPantry();
+                renderShoppingList();
+            } catch (error) {
+                alert('Failed to clear data: ' + error.message);
+            }
+        }
+    }
+
+    // Pantry Functions
+    async function getPantry() {
+        const userId = document.getElementById('pantry-user-id').value;
+        if (!userId) {
+            showError('pantry-error', 'Please enter a User ID');
+            return;
+        }
+        await updateProfile(userId);
+        try {
+            const response = await fetch(`${API_BASE_URL}/pantry/?user_id=${userId}`);
+            if (!response.ok) throw new Error('Pantry not found');
+            const data = await response.json();
+            pantryItems = data.items || [];
+            renderPantry();
+            clearError('pantry-error');
+        } catch (error) {
+            showError('pantry-error', error.message);
+            document.getElementById('pantry-list').innerHTML = '';
+        }
+    }
+
+    async function addPantryItem() {
+        const userId = document.getElementById('pantry-user-id').value;
+        const name = document.getElementById('pantry-name').value;
+        const quantity = document.getElementById('pantry-quantity').value;
+        const expiry = document.getElementById('pantry-expiry').value;
+        const manufacture = document.getElementById('pantry-manufacture').value;
+
+        if (!userId || !name || !quantity) {
+            showError('pantry-add-error', 'Please fill all required fields');
+            return;
+        }
+
+        pantryItems.push({
+            name,
+            quantity: parseInt(quantity),
+            expiry_date: expiry || null,
+            manufacture_date: manufacture || null
+        });
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/pantry/?user_id=${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: pantryItems })
+            });
+            if (!response.ok) throw new Error('Failed to update pantry');
+            const data = await response.json();
+            pantryItems = data.items;
+            renderPantry();
+            clearError('pantry-add-error');
+            document.getElementById('pantry-name').value = '';
+            document.getElementById('pantry-quantity').value = '';
+            document.getElementById('pantry-expiry').value = '';
+            document.getElementById('pantry-manufacture').value = '';
+        } catch (error) {
+            showError('pantry-add-error', error.message);
+        }
+    }
+
+    async function deletePantryItem(index) {
+        const userId = document.getElementById('pantry-user-id').value;
+        pantryItems.splice(index, 1);
+        try {
+            const response = await fetch(`${API_BASE_URL}/pantry/?user_id=${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: pantryItems })
+            });
+            if (!response.ok) throw new Error('Failed to update pantry');
+            const data = await response.json();
+            pantryItems = data.items;
+            renderPantry();
+            clearError('pantry-add-error');
+        } catch (error) {
+            showError('pantry-add-error', error.message);
+        }
+    }
+
+    function renderPantry() {
+        const pantryList = document.getElementById('pantry-list');
+        pantryList.innerHTML = pantryItems.map((item, index) => `
+            <div class="item">
+                <span>${item.name}: ${item.quantity}</span>
+                <div>
+                    <button onclick="toggleDetails(${index})">Details</button>
+                    <button class="delete-btn" onclick="deletePantryItem(${index})">Delete</button>
+                </div>
+            </div>
+            <div id="details-${index}" class="item-details">
+                <p><strong>Name:</strong> ${item.name}</p>
+                <p><strong>Quantity:</strong> ${item.quantity}</p>
+                <p><strong>Expiry Date:</strong> ${item.expiry_date || 'N/A'}</p>
+                <p><strong>Manufacture Date:</strong> ${item.manufacture_date || 'N/A'}</p>
+            </div>
+        `).join('');
+    }
+
+    function toggleDetails(index) {
+        const details = document.getElementById(`details-${index}`);
+        details.style.display = details.style.display === 'block' ? 'none' : 'block';
+    }
+
+    // Shopping List Functions
+    async function getShoppingList() {
+        const userId = document.getElementById('shopping-user-id').value;
+        if (!userId) {
+            showError('shopping-error', 'Please enter a User ID');
+            return;
+        }
+        await updateProfile(userId);
+        try {
+            const response = await fetch(`${API_BASE_URL}/shopping-list/?user_id=${userId}`);
+            if (!response.ok) throw new Error('Shopping list not found');
+            const data = await response.json();
+            shoppingItems = data.items || [];
+            renderShoppingList();
+            clearError('shopping-error');
+        } catch (error) {
+            showError('shopping-error', error.message);
+            document.getElementById('shopping-list').innerHTML = '';
+        }
+    }
+
+    async function addShoppingItem() {
+        const userId = document.getElementById('shopping-user-id').value;
+        const name = document.getElementById('shopping-name').value;
+        const quantity = document.getElementById('shopping-quantity').value;
+
+        if (!userId || !name || !quantity) {
+            showError('shopping-add-error', 'Please fill all required fields');
+            return;
+        }
+
+        shoppingItems.push({ name, quantity: parseInt(quantity) });
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/shopping-list/?user_id=${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: shoppingItems })
+            });
+            if (!response.ok) throw new Error('Failed to update shopping list');
+            const data = await response.json();
+            shoppingItems = data.items;
+            renderShoppingList();
+            clearError('shopping-add-error');
+            document.getElementById('shopping-name').value = '';
+            document.getElementById('shopping-quantity').value = '';
+        } catch (error) {
+            showError('shopping-add-error', error.message);
+        }
+    }
+
+    async function deleteShoppingItem(index) {
+        const userId = document.getElementById('shopping-user-id').value;
+        shoppingItems.splice(index, 1);
+        try {
+            const response = await fetch(`${API_BASE_URL}/shopping-list/?user_id=${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: shoppingItems })
+            });
+            if (!response.ok) throw new Error('Failed to update shopping list');
+            const data = await response.json();
+            shoppingItems = data.items;
+            renderShoppingList();
+            clearError('shopping-add-error');
+        } catch (error) {
+            showError('shopping-add-error', error.message);
+        }
+    }
+
+    function renderShoppingList() {
+        const shoppingList = document.getElementById('shopping-list');
+        shoppingList.innerHTML = shoppingItems.map((item, index) => `
+            <div class="item">
+                <span>${item.name}: ${item.quantity}</span>
+                <button class="delete-btn" onclick="deleteShoppingItem(${index})">Delete</button>
+            </div>
+        `).join('');
+    }
+
+    // Google Maps Integration
+    function initMap() {
+        const location = { lat: 37.7749, lng: -122.4194 }; // Default: San Francisco
+        const map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 12,
+            center: location
+        });
+
+        const request = {
+            location: location,
+            radius: '5000',
+            type: ['grocery_or_supermarket']
+        };
+
+        const service = new google.maps.places.PlacesService(map);
+        service.nearbySearch(request, (results, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK) {
+                for (let i = 0; i < results.length; i++) {
+                    new google.maps.Marker({
+                        position: results[i].geometry.location,
+                        map: map,
+                        title: results[i].name
+                    });
+                }
+            }
+        });
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                const userLocation = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+                map.setCenter(userLocation);
+                new google.maps.Marker({
+                    position: userLocation,
+                    map: map,
+                    title: 'Your Location'
+                });
+            });
+        }
+    }
+</script>
