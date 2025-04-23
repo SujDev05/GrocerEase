@@ -1,0 +1,32 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Docker
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2
+
+      # Build the Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t my-docker-image:latest .
+
+      # Run the Docker container locally (for testing)
+      - name: Run Docker container
+        run: |
+          docker run -d --name grocerease -p 80:80 my-docker-image:latest
