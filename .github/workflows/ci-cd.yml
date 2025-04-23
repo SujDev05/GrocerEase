@@ -3,10 +3,10 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - main
+      - backend
   pull_request:
     branches:
-      - main
+      - backend
 
 jobs:
   build:
@@ -26,7 +26,18 @@ jobs:
         run: |
           docker build -t my-docker-image:latest .
 
+      # Stop and remove the existing container (if it exists)
+      - name: Stop and remove existing container
+        run: |
+          docker stop grocerease || true
+          docker rm grocerease || true
+
       # Run the Docker container locally (for testing)
       - name: Run Docker container
         run: |
           docker run -d --name grocerease -p 80:80 my-docker-image:latest
+
+      # Run tests inside the container
+      - name: Run tests
+        run: |
+          docker exec grocerease pytest /app/tests
