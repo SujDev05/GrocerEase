@@ -36,10 +36,16 @@ jobs:
         run: |
           docker build -t my-docker-image:latest .
 
+      # Stop and remove the existing container (if it exists)
+      - name: Stop and remove existing container
+        run: |
+          docker stop grocerease || true
+          docker rm grocerease || true
+
       # Run the Docker container
       - name: Run the container
         run: |
-          docker run -d --name grocerease --network host -e DATABASE_URL=postgresql://user:password@localhost:5432/mydatabase my-docker-image:latest
+          docker run -d --name grocerease --network host -e DATABASE_URL=postgresql://user:password@db:5432/grocerease my-docker-image:latest
 
       # Run tests inside the container
       - name: Run tests
