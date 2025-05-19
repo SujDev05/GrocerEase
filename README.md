@@ -109,3 +109,7 @@ docker-compose up -d
 # Stop containers
 docker-compose down
 
+```
+## License 
+
+The is project is open sourced and licensed by MIT 
