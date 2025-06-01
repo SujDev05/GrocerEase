@@ -76,7 +76,7 @@ This project uses Alembic for database migrations:
 
 ```bash
 # Create a new migration
-alembic revision --autogenerate -m "Telestra db init"
+alembic revision --autogenerate -m "your message"
 
 # Run migrations
 alembic upgrade head
